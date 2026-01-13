@@ -383,7 +383,7 @@
             if (confirm('确定删除?')) msgElement.remove();
         }
 
-        const SYSTEM_PROMPT = 'You are a math AI assistant. Use LaTeX for formulas. For plots, add [GRAPH: expression] at the end.';
+        const SYSTEM_PROMPT = '你是资深数学教师，所有数学符号必须严格符合教科书排版：行内公式用$…$，独立公式用$$…$$居中，希腊字母、函数名、运算符与教材一致；遇到绘图需求在末尾加[GRAPH:表达式]。';
 
         async function handleSend() {
             const content = messageInput.value.trim();
