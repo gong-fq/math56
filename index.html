@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数学核心素养AI</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$']],
+                displayMath: [['$$', '$$']],
+                processEscapes: true,
+                macros: {
+                    ddet: ["\\begin{vmatrix} #1 \\end{vmatrix}", 1],
+                    ppmat: ["\\begin{pmatrix} #1 \\end{pmatrix}", 1]
+                }
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="https://www.desmos.com/api/v1.9/calculator.js?apiKey=dcb31709b452b1cf9dc26972add0fda6"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: #f5f7fa; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        .container { display: flex; flex: 1; width: 100%; padding: 15px; gap: 20px; overflow: hidden; }
+        .left-panel { flex: 0 0 280px; background: linear-gradient(135deg, #1a2980, #26d0ce); border-radius: 20px; padding: 25px; color: white; box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: flex; flex-direction: column; overflow-y: auto; }
+        .right-panel { flex: 1; display: flex; flex-direction: column; background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
+        .chat-container { flex: 1; padding: 25px; overflow-y: auto; background-color: #fafbfd; display: flex; flex-direction: column; gap: 20px; }
+        .message { max-width: 85%; padding: 15px 20px; border-radius: 18px; line-height: 1.7; word-wrap: break-word; position: relative; }
+        .ai-message { align-self: flex-start; background: white; border: 1px solid #e1f0ff; }
+        .user-message { align-self: flex-end; background: linear-gradient(135deg, #1a2980, #26d0ce); color: white; }
+        .delete-btn { position: absolute; top: 8px; right: 8px; background: rgba(255, 0, 0, 0.7); color: white; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 12px; display: none; transition: background 0.2s; }
+        .message:hover .delete-btn { display: block; }
+        .delete-btn:hover { background: rgba(255, 0, 0, 0.9); }
+        .mjx-container { margin: 1.2em 0 !important; font-size: 1.1em !important; display: block !important; text-align: center; max-width: 100%; overflow-x: auto; }
+        .thinking { display: inline-flex; align-items: center; gap: 4px; font-size: 16px; color: #1a2980; }
+        .thinking-dot { width: 8px; height: 8px; border-radius: 50%; background: linear-gradient(135deg, #1a2980, #26d0ce); animation: thinking-bounce 1.4s infinite ease-in-out; }
+        .thinking-dot:nth-child(1) { animation-delay: 0s; }
+        .thinking-dot:nth-child(2) { animation-delay: 0.2s; }
+        .thinking-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes thinking-bounce { 0%, 60%, 100% { transform: translateY(0); opacity: 0.7; } 30% { transform: translateY(-10px); opacity: 1; } }
+        #desmos-container { height: 320px; border-top: 1px solid #eee; display: none; }
+        .tool-bar { padding: 10px 20px; background: #f8f9fa; border-top: 1px solid #eee; display: flex; gap: 10px; flex-wrap: wrap; }
+        .tool-btn { font-size: 12px; padding: 6px 15px; border-radius: 20px; border: 1px solid #1a2980; color: #1a2980; cursor: pointer; background: white; transition: all 0.2s; }
+        .tool-btn:hover { background: #1a2980; color: white; }
+        .tool-btn.danger { border-color: #dc3545; color: #dc3545; }
+        .tool-btn.danger:hover { background: #dc3545; color: white; }
+        .tool-btn.success { border-color: #28a745; color: #28a745; }
+        .tool-btn.success:hover { background: #28a745; color: white; }
+        .input-area { padding: 20px; border-top: 1px solid #eee; }
+        .input-container { display: flex; gap: 12px; align-items: flex-end; }
+        .input-box { flex: 1; border: 1px solid #ddd; border-radius: 12px; padding: 12px; font-size: 15px; resize: none; min-height: 50px; max-height: 150px; }
+        .send-btn { background: #1a2980; color: white; border: none; border-radius: 50%; width: 50px; height: 50px; cursor: pointer; flex-shrink: 0; transition: opacity 0.2s; }
+        .send-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .history-section { margin-top: 20px; padding-top: 15px; border-top: 1px solid rgba(255, 255, 255, 0.2); }
+        .history-title { font-size: 14px; font-weight: bold; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .history-list { max-height: 200px; overflow-y: auto; }
+        .history-item { background: rgba(255, 255, 255, 0.1); padding: 8px 12px; margin-bottom: 8px; border-radius: 8px; font-size: 12px; cursor: pointer; transition: background 0.2s; display: flex; justify-content: space-between; align-items: center; }
+        .history-item:hover { background: rgba(255, 255, 255, 0.2); }
+        .history-item-delete { color: rgba(255, 100, 100, 0.8); cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: all 0.2s; }
+        .history-item-delete:hover { background: rgba(255, 100, 100, 0.3); color: white; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
+        .modal-content { background-color: white; padding: 30px; border-radius: 15px; width: 500px; max-width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        .modal-header { font-size: 20px; font-weight: bold; margin-bottom: 20px; color: #1a2980; }
+        .modal-body input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; margin-bottom: 15px; }
+        .modal-footer { display: flex; gap: 10px; justify-content: flex-end; }
+        .modal-btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; transition: all 0.2s; }
+        .modal-btn.primary { background: #1a2980; color: white; }
+        .modal-btn.primary:hover { background: #26d0ce; }
+        .modal-btn.secondary { background: #f0f0f0; color: #333; }
+        .modal-btn.secondary:hover { background: #e0e0e0; }
+        .config-status { padding: 10px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; }
+        .config-status.warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .config-status.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    </style>
+</head>
+<body>
+    <div id="config-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><i class="fas fa-cog"></i> API配置</div>
+            <div class="modal-body">
+                <div id="config-status" class="config-status warning">⚠️ 请配置DeepSeek API密钥</div>
+                <label style="font-size: 13px; color: #666; margin-bottom: 5px; display: block;">API Key</label>
+                <input type="password" id="api-key-input" placeholder="sk-xxxxxxxxxxxxxxxx">
+                <label style="font-size: 13px; color: #666; margin-bottom: 5px; display: block;">API URL</label>
+                <input type="text" id="api-url-input" value="https://api.deepseek.com/chat/completions">
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn secondary" onclick="closeConfigModal()">取消</button>
+                <button class="modal-btn primary" onclick="saveConfig()">保存</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="left-panel">
+            <h1 style="font-size: 20px; margin-bottom: 8px;">数学核心素养AI</h1>
+            <p style="font-size: 12px; opacity: 0.8;">龚凤乾教授设计</p>
+            <hr style="margin: 15px 0; opacity: 0.2;">
+            <div style="font-size: 13px; line-height: 1.6;">
+                <p style="font-weight: bold; margin-bottom: 12px;"><i class="fas fa-info-circle"></i> 使用说明:</p>
+                <ul style="padding-left: 18px; opacity: 0.9;">
+                    <li style="margin-bottom: 12px;"><strong>智能问答</strong></li>
+                    <li style="margin-bottom: 12px;"><strong>完美公式</strong></li>
+                    <li style="margin-bottom: 12px;"><strong>动态绘图</strong></li>
+                    <li style="margin-bottom: 12px;"><strong>历史记录</strong></li>
+                </ul>
+            </div>
+            <div class="history-section">
+                <div class="history-title">
+                    <span><i class="fas fa-history"></i> 历史</span>
+                    <span class="history-item-delete" onclick="clearHistory()" style="font-size: 11px;">清空</span>
+                </div>
+                <div id="history-list" class="history-list"></div>
+            </div>
+            <p style="margin-top: auto; padding-top: 20px; font-size: 11px; opacity: 0.7; text-align: center;">微分</p>
+        </div>
+
+        <div class="right-panel">
+            <div id="chat-container" class="chat-container"></div>
+            <div id="desmos-container"></div>
+            <div class="tool-bar">
+                <button class="tool-btn success" onclick="openConfigModal()"><i class="fas fa-cog"></i> 配置API</button>
+                <button class="tool-btn" onclick="toggleDesmos()"><i class="fas fa-chart-line"></i> 切换图形</button>
+                <button class="tool-btn danger" onclick="clearDesmos()"><i class="fas fa-eraser"></i> 清空图形</button>
+                <button class="tool-btn danger" onclick="clearChat()"><i class="fas fa-trash"></i> 清空对话</button>
+            </div>
+            <div class="input-area">
+                <div class="input-container">
+                    <textarea id="message-input" class="input-box" placeholder="输入数学问题..."></textarea>
+                    <button id="send-btn" class="send-btn"><i class="fas fa-paper-plane"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let API_KEY = localStorage.getItem('deepseek_api_key') || '';
+        let API_URL = localStorage.getItem('deepseek_api_url') || 'https://api.deepseek.com/chat/completions';
+        const chatContainer = document.getElementById('chat-container');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = document.getElementById('send-btn');
+        const desmosEl = document.getElementById('desmos-container');
+        let calculator = null;
+        let chatHistory = [];
+        let messageCounter = 0;
+
+        function openConfigModal() {
+            const modal = document.getElementById('config-modal');
+            const keyInput = document.getElementById('api-key-input');
+            const urlInput = document.getElementById('api-url-input');
+            const statusDiv = document.getElementById('config-status');
+            keyInput.value = API_KEY;
+            urlInput.value = API_URL;
+            if (API_KEY) {
+                statusDiv.className = 'config-status success';
+                statusDiv.innerHTML = '✅ API已配置';
+            } else {
+                statusDiv.className = 'config-status warning';
+                statusDiv.innerHTML = '⚠️ 请配置API密钥';
+            }
+            modal.style.display = 'flex';
+        }
+
+        function closeConfigModal() {
+            document.getElementById('config-modal').style.display = 'none';
+        }
+
+        function saveConfig() {
+            const keyInput = document.getElementById('api-key-input');
+            const urlInput = document.getElementById('api-url-input');
+            API_KEY = keyInput.value.trim();
+            API_URL = urlInput.value.trim();
+            if (!API_KEY) {
+                alert('请输入API密钥');
+                return;
+            }
+            localStorage.setItem('deepseek_api_key', API_KEY);
+            localStorage.setItem('deepseek_api_url', API_URL);
+            closeConfigModal();
+            const successDiv = document.createElement('div');
+            successDiv.className = 'message ai-message';
+            successDiv.innerHTML = '<div>✅ API配置成功</div>';
+            chatContainer.appendChild(successDiv);
+        }
+
+        window.addEventListener('load', () => {
+            if (!API_KEY) {
+                setTimeout(() => openConfigModal(), 1000);
+            }
+        });
+
+        function saveCurrentConversation(userMsg, aiMsg) {
+            let history = JSON.parse(localStorage.getItem('chatHistory') || '[]');
+            const preview = userMsg.substring(0, 30) + (userMsg.length > 30 ? '...' : '');
+            history.unshift({
+                id: Date.now(),
+                preview: preview,
+                messages: [...chatHistory]
+            });
+            if (history.length > 10) history = history.slice(0, 10);
+            localStorage.setItem('chatHistory', JSON.stringify(history));
+            loadHistory();
+        }
+
+        function loadHistory() {
+            const historyList = document.getElementById('history-list');
+            const history = JSON.parse(localStorage.getItem('chatHistory') || '[]');
+            historyList.innerHTML = '';
+            history.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'history-item';
+                div.innerHTML = `<span onclick="loadConversation(${item.id})">${item.preview}</span><span class="history-item-delete" onclick="deleteHistoryItem(event, ${item.id})">×</span>`;
+                historyList.appendChild(div);
+            });
+        }
+
+        function loadConversation(id) {
+            const history = JSON.parse(localStorage.getItem('chatHistory') || '[]');
+            const conv = history.find(item => item.id === id);
+            if (!conv) return;
+            clearChat();
+            chatHistory = conv.messages;
+            chatHistory.forEach(msg => {
+                if (msg.role !== 'system') {
+                    addMessageToUI(msg.role === 'user' ? 'user' : 'ai', msg.content, false);
+                }
+            });
+        }
+
+        function deleteHistoryItem(event, id) {
+            event.stopPropagation();
+            if (confirm('确定删除?')) {
+                let history = JSON.parse(localStorage.getItem('chatHistory') || '[]');
+                history = history.filter(item => item.id !== id);
+                localStorage.setItem('chatHistory', JSON.stringify(history));
+                loadHistory();
+            }
+        }
+
+        function clearHistory() {
+            if (confirm('确定清空?')) {
+                localStorage.removeItem('chatHistory');
+                loadHistory();
+            }
+        }
+
+        function toggleDesmos() {
+            desmosEl.style.display = desmosEl.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function clearDesmos() {
+            if (calculator) calculator.setBlank();
+        }
+
+        function clearChat() {
+            if (confirm('确定清空?')) {
+                chatContainer.innerHTML = '';
+                chatHistory = [];
+                messageCounter = 0;
+            }
+        }
+
+        // 关键修复：直接定义表达式字符串
+        function autoDrawFunction(text) {
+            console.log('🔍 识别函数...');
+            
+            // 使用字符串连接避免转义问题
+            const heartCurve = 'r=1+' + String.fromCharCode(92) + 'cos(' + String.fromCharCode(92) + 'theta)';
+            const roseCurve = 'r=' + String.fromCharCode(92) + 'cos(3' + String.fromCharCode(92) + 'theta)';
+            
+            console.log('心形线表达式:', heartCurve);
+            
+            if (text.includes('心形线')) {
+                console.log('✅ 识别到心形线');
+                drawFunctions([heartCurve]);
+                return;
+            }
+            
+            if (text.includes('玫瑰线')) {
+                console.log('✅ 识别到玫瑰线');
+                drawFunctions([roseCurve]);
+                return;
+            }
+            
+            // GRAPH标记
+            const graphMatch = text.match(/\[GRAPH:\s*(.+?)\]/);
+            if (graphMatch) {
+                console.log('✅ GRAPH标记');
+                drawFunctions(graphMatch[1].trim().split(';').map(e => e.trim()));
+                return;
+            }
+            
+            // 函数模式
+            const patterns = [
+                { pattern: /y\s*=\s*([^,\n\r。；]+)/gi, prefix: 'y=' },
+                { pattern: /r\s*=\s*([^,\n\r。；]+)/gi, prefix: 'r=' },
+            ];
+            
+            let detected = [];
+            for (const { pattern, prefix } of patterns) {
+                let match;
+                pattern.lastIndex = 0;
+                while ((match = pattern.exec(text)) !== null) {
+                    let expr = match[1].trim().replace(/[，。！？；]/g, '').replace(/\s+/g, '');
+                    if (expr.length > 1 && expr.length < 100) {
+                        detected.push(prefix + expr);
+                    }
+                }
+            }
+            
+            if (detected.length > 0) {
+                console.log('✅ 检测到', detected.length, '个函数');
+                drawFunctions(detected);
+            }
+        }
+
+        function drawFunctions(expressions) {
+            if (expressions.length === 0) return;
+            console.log('🎨 开始绘图');
+            console.log('📝 表达式:', expressions);
+            
+            desmosEl.style.display = 'block';
+            
+            if (!calculator) {
+                console.log('🆕 初始化计算器');
+                calculator = Desmos.GraphingCalculator(desmosEl, { expressions: true });
+            }
+            
+            try {
+                calculator.setBlank();
+                const colors = ['#c74440', '#388c46', '#6042a6', '#2d70b3'];
+                
+                expressions.forEach((expr, i) => {
+                    try {
+                        console.log(`绘制 ${i + 1}: "${expr}"`);
+                        calculator.setExpression({ 
+                            id: 'g' + Date.now() + i,
+                            latex: expr, 
+                            color: colors[i % colors.length] 
+                        });
+                        console.log('✅ 成功');
+                    } catch (e) {
+                        console.error('❌ 失败:', e);
+                    }
+                });
+            } catch (e) {
+                console.error('❌ 错误:', e);
+            }
+        }
+
+        function formatMathText(text) {
+            let formatted = text.replace(/\\\\/g, '\\\\\\\\');
+            formatted = formatted.replace(/\[GRAPH:\s*(.+?)\]/g, '');
+            return marked.parse(formatted);
+        }
+
+        function addMessageToUI(role, text, enableDelete = true) {
+            const div = document.createElement('div');
+            div.className = `message ${role}-message`;
+            div.setAttribute('data-id', messageCounter++);
+            if (enableDelete) {
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-btn';
+                deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
+                deleteBtn.onclick = () => deleteMessage(div);
+                div.appendChild(deleteBtn);
+            }
+            const contentDiv = document.createElement('div');
+            contentDiv.innerHTML = role === 'ai' ? formatMathText(text) : text;
+            div.appendChild(contentDiv);
+            chatContainer.appendChild(div);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            if (window.MathJax && role === 'ai') {
+                MathJax.typesetPromise([contentDiv]).then(() => autoDrawFunction(text));
+            }
+            return div;
+        }
+
+        function deleteMessage(msgElement) {
+            if (confirm('确定删除?')) msgElement.remove();
+        }
+
+        const SYSTEM_PROMPT = 'You are a math AI assistant. Use LaTeX for formulas. For plots, add [GRAPH: expression] at the end.';
+
+        async function handleSend() {
+            const content = messageInput.value.trim();
+            if (!content || sendBtn.disabled) return;
+            if (!API_KEY) {
+                alert('请先配置API');
+                openConfigModal();
+                return;
+            }
+            addMessageToUI('user', content);
+            messageInput.value = '';
+            sendBtn.disabled = true;
+            const aiDiv = addMessageToUI('ai', '<span class="thinking">思考中<span class="thinking-dot"></span><span class="thinking-dot"></span><span class="thinking-dot"></span></span>');
+            let fullAIResponse = "";
+            if (chatHistory.length === 0) {
+                chatHistory.push({ role: "system", content: SYSTEM_PROMPT });
+            }
+            chatHistory.push({ role: "user", content: content });
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${API_KEY}` },
+                    body: JSON.stringify({ model: "deepseek-chat", messages: chatHistory, stream: true })
+                });
+                if (!response.ok) throw new Error(`API失败: ${response.status}`);
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                aiDiv.querySelector('div').innerHTML = "";
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+                    for (const line of lines) {
+                        if (line.trim().startsWith('data: ')) {
+                            const dataStr = line.replace('data: ', '').trim();
+                            if (dataStr === '[DONE]') continue;
+                            try {
+                                const data = JSON.parse(dataStr);
+                                const delta = data.choices[0].delta.content || "";
+                                fullAIResponse += delta;
+                                aiDiv.querySelector('div').innerHTML = formatMathText(fullAIResponse);
+                                chatContainer.scrollTop = chatContainer.scrollHeight;
+                            } catch (e) {}
+                        }
+                    }
+                }
+                if (window.MathJax) {
+                    MathJax.typesetPromise([aiDiv.querySelector('div')]).then(() => autoDrawFunction(fullAIResponse));
+                }
+                chatHistory.push({ role: "assistant", content: fullAIResponse });
+                saveCurrentConversation(content, fullAIResponse);
+            } catch (error) {
+                console.error('错误:', error);
+                chatHistory.pop();
+                aiDiv.querySelector('div').innerHTML = "连接出现问题<br>请检查API配置";
+            } finally {
+                sendBtn.disabled = false;
+            }
+        }
+
+        sendBtn.onclick = handleSend;
+        messageInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+            }
+        });
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('config-modal');
+            if (event.target == modal) closeConfigModal();
+        }
+
+        loadHistory();
+        console.log('✅ 初始化完成');
+        
+        // 测试：直接绘制心形线
+        setTimeout(() => {
+            console.log('🧪 测试绘图功能');
+            const testExpr = 'r=1+' + String.fromCharCode(92) + 'cos(' + String.fromCharCode(92) + 'theta)';
+            console.log('测试表达式:', testExpr);
+        }, 1000);
+    </script>
+</body>
+</html>

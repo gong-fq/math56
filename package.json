@@ -1,0 +1,9 @@
+{
+  "name": "math-ai-app",
+  "version": "1.0.0",
+  "description": "数学核心素养AI —— Netlify 零配置部署",
+  "private": true,
+  "devDependencies": {
+    "@netlify/functions": "^2.6.0"
+  }
+}
